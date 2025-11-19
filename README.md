@@ -1,0 +1,1 @@
+Simplifies the complex APIs of Harmonic's XOS Encoder.
