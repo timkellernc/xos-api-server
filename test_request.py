@@ -1,6 +1,6 @@
 import requests
 response = None
-if False:
+if True:
     response = requests.post(
         "http://127.0.0.1:5000/api/scte",
         json = {
@@ -9,10 +9,10 @@ if False:
         },
         headers={"Content-Type": "application/json"}
         )
-if True:
+if False:
     response = requests.get("http://127.0.0.1:5000/api/esam-endpoint")
 
-if True:
+if False:
     response = requests.post(
         "http://127.0.0.1:5000/api/esam-endpoint",
         json = {

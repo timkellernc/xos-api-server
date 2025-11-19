@@ -39,17 +39,22 @@ def str_to_hex(s: str) -> str:
 
 def get_template_scte():
     # TEMPLATE SCTE
-    template = '/DA+AAAAAAAAAP/wAQZ/ACwCKkNVRUkAAAABf78OG2ZtdD1mdWxsc2NyZWVuJmF1ZD1jcmVhdGl2ZQAAAOjMLho='
+    template = '/DBDAAAAAAAAAP/wAQZ/ADECL0NVRUkAAAABf/8AAAAAPA4bZm10PWZ1bGxzY3JlZW4mYXVkPWNyZWF0aXZlMAAAlisXEw=='
     return template
 
-def create_scte_35(upid: str):
+def create_scte_35(upid: str, duration: float):
     template = get_template_scte()
+    seg_duration = round(duration * 90000)
     cue = threefive.Cue(template)
     seg = cue.descriptors[0]
     # Modify SCTE
     if type(seg) is threefive.SegmentationDescriptor:
        seg.segmentation_event_id = str(get_id())
        seg.segmentation_upid = upid
+       seg.segmentation_upid_length = len(upid)
+
+       seg.segmentation_duration = duration
+       print(seg.segmentation_duration)
     return cue.base64()
 
 def send_scte(endpoint, stream_id, scte):
@@ -104,13 +109,15 @@ def api_scte():
     endpoint = payload.get("endpoint") or esam_endpoint # Optional, else will use esam_endpoint
     stream_id = payload.get("stream_id")
     upid = payload.get("upid")
+    duration = payload.get("duration") or 60
 
     # Validation
     if not stream_id:
         return jsonify({"error": "missing_or_invalid", "field": "stream_id"}), 400
     
     # CREATE SCTE-35 BYTES
-    scte = create_scte_35(upid)
+    scte = create_scte_35(upid, duration)
+    print(scte)
 
     # CREATE XOS API CALL
     response = send_scte(endpoint, stream_id, scte)
