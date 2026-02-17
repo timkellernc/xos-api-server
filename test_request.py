@@ -4,8 +4,9 @@ if True:
     response = requests.post(
         "http://127.0.0.1:5000/api/scte",
         json = {
-            "stream_id": "station1",
-            "upid": "fmt=pip&aud=creative"
+            "stream_id": "mcr1",
+            "upid": "",
+            "duration": 60
         },
         headers={"Content-Type": "application/json"}
         )

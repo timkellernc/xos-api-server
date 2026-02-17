@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SCTE Ad Insertion Control</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-secondary: #141824;
+            --bg-tertiary: #1e2433;
+            --accent-primary: #00d4ff;
+            --accent-secondary: #7c3aed;
+            --accent-success: #10b981;
+            --accent-warning: #f59e0b;
+            --accent-danger: #ef4444;
+            --text-primary: #e5e7eb;
+            --text-secondary: #9ca3af;
+            --border-color: #374151;
+            --glass-bg: rgba(30, 36, 51, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* Settings Panel */
+        .settings-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 1rem 1.5rem;
+            z-index: 100;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .settings-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .settings-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .settings-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .input-group label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        input[type="url"] {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+            min-width: 250px;
+        }
+
+        input[type="text"]:focus,
+        input[type="url"]:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 212, 255, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-small {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+        }
+
+        .btn-danger {
+            margin-left: 0.5rem;
+            background: linear-gradient(135deg, var(--accent-danger), #dc2626);
+        }
+
+        .btn-danger:hover {
+            box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+        }
+
+        /* Channel Strips Container */
+        .strips-container {
+            position: fixed;
+            top: 5rem;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            gap: 1rem;
+            padding: 1rem;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        /* Center strips when they fit, allow full scroll when overflow */
+        .strips-container::before,
+        .strips-container::after {
+            content: '';
+            margin: auto;
+        }
+
+        /* Channel Strip */
+        .channel-strip {
+            flex: 0 0 280px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s;
+            height: 100%;
+        }
+
+        .channel-strip:hover {
+            border-color: rgba(0, 212, 255, 0.3);
+        }
+
+        /* Strip Header */
+        .strip-header {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .strip-title-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .strip-title {
+            font-size: 1rem;
+            font-weight: 700;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            transition: all 0.2s;
+            flex: 1;
+        }
+
+        .strip-title:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .strip-title:focus {
+            outline: none;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--accent-primary);
+        }
+
+        .color-picker-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        input[type="color"] {
+            width: 40px;
+            height: 40px;
+            border: 2px solid var(--border-color);
+            border-radius: 0.375rem;
+            cursor: pointer;
+            background: transparent;
+        }
+
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 2px;
+        }
+
+        input[type="color"]::-webkit-color-swatch {
+            border: none;
+            border-radius: 0.25rem;
+        }
+
+        /* Stream ID */
+        .stream-id-container {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .stream-id-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stream-id-input {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .stream-id-input:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .stream-id-input[readonly] {
+            cursor: pointer;
+            background: var(--bg-secondary);
+            border-style: dashed;
+        }
+
+        .stream-id-input[readonly]:hover {
+            border-color: var(--accent-primary);
+        }
+
+        /* Ad Type Grid */
+        .ad-type-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .ad-type-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+        }
+
+        .ad-type-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.25rem;
+        }
+
+        .ad-btn {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ad-btn:hover:not(:disabled) {
+            background: var(--bg-secondary);
+            border-color: var(--accent-primary);
+            transform: translateY(-1px);
+        }
+
+        .ad-btn.selected {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-color: var(--accent-primary);
+            color: white;
+            box-shadow: 0 0 12px rgba(0, 212, 255, 0.4);
+        }
+
+        .ad-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* Insert Button */
+        .insert-btn {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: linear-gradient(135deg, var(--accent-success), #059669);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .insert-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .insert-btn.loading {
+            background: linear-gradient(135deg, var(--accent-warning), #d97706);
+        }
+
+        /* Timer Display */
+        .timer-display {
+            background: var(--bg-tertiary);
+            border: 2px solid var(--accent-primary);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            text-align: center;
+            display: none;
+        }
+
+        .timer-display.active {
+            display: block;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                border-color: var(--accent-primary);
+            }
+
+            50% {
+                border-color: var(--accent-secondary);
+            }
+        }
+
+        .timer-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .timer-value {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Status Message */
+        .status-message {
+            padding: 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-align: center;
+            display: none;
+        }
+
+        .status-message.show {
+            display: block;
+        }
+
+        .status-message.success {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid var(--accent-success);
+            color: var(--accent-success);
+        }
+
+        .status-message.error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid var(--accent-danger);
+            color: var(--accent-danger);
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-primary);
+        }
+
+        /* Empty State */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-secondary);
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .empty-state-text {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state-subtext {
+            font-size: 0.875rem;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Settings Panel -->
+    <div class="settings-panel">
+        <div class="settings-header">
+            <div class="settings-title">SCTE Ad Insertion Control</div>
+            <div class="settings-controls">
+                <div class="input-group">
+                    <label for="api-url">API Server:</label>
+                    <input type="url" id="api-url" placeholder="http://localhost:5000">
+                </div>
+                <button class="btn" onclick="addChannelStrip()">+ Add Channel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Channel Strips Container -->
+    <div class="strips-container" id="strips-container">
+        <div class="empty-state">
+            <div class="empty-state-icon">📺</div>
+            <div class="empty-state-text">No Channels</div>
+            <div class="empty-state-subtext">Click "Add Channel" to get started</div>
+        </div>
+    </div>
+
+    <script>
+        // Constants
+        const DEFAULT_API_URL = 'http://localhost:5000';
+        const UPID_MAP = {
+            'fullscreen': 'fmt=interstitial',
+            'pip': 'fmt=pip',
+            'lbar': 'fmt=squeezeBack'
+        };
+        const DURATIONS = [15, 30, 45, 60];
+        const AD_TYPES = ['fullscreen', 'pip', 'lbar'];
+        const AD_TYPE_LABELS = {
+            'fullscreen': 'Fullscreen',
+            'pip': 'PiP',
+            'lbar': 'L-Bar'
+        };
+
+        // State
+        let state = {
+            apiUrl: DEFAULT_API_URL,
+            strips: []
+        };
+
+        // Active timers (not persisted, recreated on load)
+        let activeTimers = {};
+
+        // Initialize
+        function init() {
+            loadState();
+            renderStrips();
+
+            // API URL input handler
+            const apiUrlInput = document.getElementById('api-url');
+            apiUrlInput.value = state.apiUrl;
+            apiUrlInput.addEventListener('change', (e) => {
+                state.apiUrl = e.target.value || DEFAULT_API_URL;
+                saveState();
+            });
+        }
+
+        // State Management
+        function loadState() {
+            const saved = localStorage.getItem('scte-client-state');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    state = { ...state, ...parsed };
+
+                    // Clear any locked states and timers on reload
+                    // This prevents forever-locked strips if page was reloaded mid-timer
+                    state.strips.forEach(strip => {
+                        if (strip.locked || strip.timerValue !== undefined) {
+                            strip.locked = false;
+                            strip.timerValue = undefined;
+                            strip.timerEndTime = undefined;
+                            strip.selectedAdType = null;
+                            strip.selectedDuration = null;
+                        }
+                        delete strip.timer; // Timer references can't be serialized
+                    });
+                    saveState();
+                } catch (e) {
+                    console.error('Failed to load state:', e);
+                }
+            }
+        }
+
+        function saveState() {
+            localStorage.setItem('scte-client-state', JSON.stringify(state));
+        }
+
+        // Channel Strip Management
+        function addChannelStrip() {
+            const strip = {
+                id: Date.now(),
+                title: `Channel ${state.strips.length + 1}`,
+                color: '#7c3aed',
+                streamId: '',
+                selectedAdType: null,
+                selectedDuration: null,
+                locked: false,
+                loopEnabled: false,
+                loopInterval: 5, // Default 5 seconds
+                timer: null
+            };
+            state.strips.push(strip);
+            saveState();
+            renderStrips();
+        }
+
+        function removeChannelStrip(id) {
+            const strip = state.strips.find(s => s.id === id);
+            if (!strip) return;
+
+            // Confirmation dialog
+            const confirmMsg = `Delete "${strip.title}"?\n\nThis will permanently remove this channel.`;
+            if (!confirm(confirmMsg)) {
+                return;
+            }
+
+            // Clear timer if active
+            if (activeTimers[id]) {
+                clearInterval(activeTimers[id]);
+                delete activeTimers[id];
+            }
+
+            state.strips = state.strips.filter(s => s.id !== id);
+            saveState();
+            renderStrips();
+        }
+
+        function updateStrip(id, updates) {
+            const strip = state.strips.find(s => s.id === id);
+            if (strip) {
+                Object.assign(strip, updates);
+                saveState();
+            }
+        }
+
+        // Rendering
+        function renderStrips() {
+            const container = document.getElementById('strips-container');
+
+            if (state.strips.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📺</div>
+                        <div class="empty-state-text">No Channels</div>
+                        <div class="empty-state-subtext">Click "Add Channel" to get started</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = state.strips.map(strip => renderStrip(strip)).join('');
+        }
+
+        function renderStrip(strip) {
+            const isLocked = strip.locked;
+            const hasSelection = strip.selectedAdType && strip.selectedDuration;
+
+            return `
+                <div class="channel-strip" style="border-left: 4px solid ${strip.color}">
+                    <!-- Header -->
+                    <div class="strip-header">
+                        <div class="strip-title-container">
+                            <input 
+                                type="text" 
+                                class="strip-title" 
+                                value="${strip.title}"
+                                onchange="updateStrip(${strip.id}, { title: this.value })"
+                                ${isLocked ? 'disabled' : ''}
+                            >
+                            <button 
+                                class="btn btn-small btn-danger" 
+                                onclick="removeChannelStrip(${strip.id})"
+                                ${isLocked ? 'disabled' : ''}
+                            >×</button>
+                        </div>
+                        <div class="color-picker-container">
+                            <input 
+                                type="color" 
+                                value="${strip.color}"
+                                onchange="updateStrip(${strip.id}, { color: this.value }); renderStrips();"
+                                ${isLocked ? 'disabled' : ''}
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Stream ID -->
+                    <div class="stream-id-container">
+                        <span class="stream-id-label">Stream ID</span>
+                        <input 
+                            type="text" 
+                            class="stream-id-input" 
+                            value="${strip.streamId}"
+                            onchange="updateStrip(${strip.id}, { streamId: this.value })"
+                            ondblclick="this.readOnly = false; this.select();"
+                            onblur="this.readOnly = true;"
+                            readonly
+                            ${isLocked ? 'disabled' : ''}
+                            placeholder="Double-click to edit"
+                            title="Double-click to edit stream ID"
+                        >
+                    </div>
+
+                    <!-- Ad Type Grid -->
+                    <div class="ad-type-grid">
+                        ${AD_TYPES.map(adType => `
+                            <div>
+                                <div class="ad-type-label">${AD_TYPE_LABELS[adType]}</div>
+                                <div class="ad-type-row">
+                                    ${DURATIONS.map(duration => `
+                                        <button 
+                                            class="ad-btn ${strip.selectedAdType === adType && strip.selectedDuration === duration ? 'selected' : ''}"
+                                            onclick="selectAd(${strip.id}, '${adType}', ${duration})"
+                                            ${isLocked ? 'disabled' : ''}
+                                        >${duration}s</button>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <!-- Loop Settings -->
+                    <div style="display: flex; gap: 1rem; align-items: center; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 0.375rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <input 
+                                type="checkbox" 
+                                id="loop-${strip.id}" 
+                                ${strip.loopEnabled ? 'checked' : ''}
+                                onchange="updateStrip(${strip.id}, { loopEnabled: this.checked }); renderStrips();"
+                                ${isLocked ? 'disabled' : ''}
+                                style="width: 1rem; height: 1rem; cursor: pointer;"
+                            >
+                            <label for="loop-${strip.id}" style="font-size: 0.875rem; cursor: pointer; user-select: none;">Loop</label>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1;">
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); white-space: nowrap;">Interval (s):</label>
+                            <input 
+                                type="number" 
+                                value="${strip.loopInterval || 5}"
+                                min="1"
+                                onchange="updateStrip(${strip.id}, { loopInterval: parseInt(this.value) || 5 })"
+                                ${isLocked ? 'disabled' : ''}
+                                style="width: 100%; min-width: 60px; padding: 0.25rem; border-radius: 0.25rem; border: 1px solid var(--border-color); background: var(--bg-tertiary); color: var(--text-primary);"
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Timer Display -->
+                    <div class="timer-display ${strip.timerValue !== undefined ? 'active' : ''}" id="timer-${strip.id}">
+                        <div class="timer-label">Time Remaining</div>
+                        <div class="timer-value">${strip.timerValue !== undefined ? (typeof strip.timerValue === 'number' ? strip.timerValue + 's' : strip.timerValue) : '0s'}</div>
+                    </div>
+
+                    <!-- Status Message -->
+                    <div class="status-message" id="status-${strip.id}"></div>
+
+                    <!-- Insert Button -->
+                    <!-- Insert/Stop Button -->
+                    <button 
+                        class="btn insert-btn ${isLocked ? (strip.loopEnabled ? 'btn-danger' : 'loading') : ''}"
+                        onclick="${isLocked && strip.loopEnabled ? `stopLoop(${strip.id})` : `insertAd(${strip.id})`}"
+                        ${!hasSelection || (isLocked && !strip.loopEnabled) ? 'disabled' : ''}
+                    >
+                        ${isLocked && strip.loopEnabled ? 'STOP LOOP' : (isLocked ? 'RUNNING' : 'INSERT')}
+                    </button>
+                </div>
+            `;
+        }
+
+        // Ad Selection
+        function selectAd(stripId, adType, duration) {
+            updateStrip(stripId, {
+                selectedAdType: adType,
+                selectedDuration: duration
+            });
+            renderStrips();
+        }
+
+        // Insert Ad
+        async function insertAd(stripId, force = false) {
+            const strip = state.strips.find(s => s.id === stripId);
+            if (!strip) return;
+            if (strip.locked && !force) return;
+
+            // Validate
+            if (!strip.streamId) {
+                showStatus(stripId, 'error', 'Please enter a Stream ID');
+                return;
+            }
+
+            if (!strip.selectedAdType || !strip.selectedDuration) {
+                showStatus(stripId, 'error', 'Please select an ad type and duration');
+                return;
+            }
+
+            // Lock controls
+            updateStrip(stripId, { locked: true });
+            renderStrips();
+
+            // Prepare request
+            const payload = {
+                stream_id: strip.streamId,
+                upid: UPID_MAP[strip.selectedAdType],
+                duration: strip.selectedDuration
+            };
+
+            try {
+                const response = await fetch(`${state.apiUrl}/api/scte`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    showStatus(stripId, 'success', 'Ad inserted successfully');
+                    startTimer(stripId, strip.selectedDuration);
+                } else {
+                    // Handle non-200 responses
+                    let errorMessage = `Error ${response.status}: `;
+                    try {
+                        const errorData = await response.json();
+                        errorMessage += errorData.error || errorData.message || JSON.stringify(errorData);
+                    } catch (e) {
+                        // If response is not JSON, try to get text
+                        try {
+                            const errorText = await response.text();
+                            errorMessage += errorText || response.statusText || 'Failed to insert ad';
+                        } catch (textError) {
+                            errorMessage += response.statusText || 'Failed to insert ad';
+                        }
+                    }
+                    updateStrip(stripId, { locked: false });
+                    renderStrips();
+                    // Show status AFTER renderStrips to prevent it from being wiped out
+                    showStatus(stripId, 'error', errorMessage);
+                }
+            } catch (error) {
+                updateStrip(stripId, { locked: false });
+                renderStrips();
+                // Show status AFTER renderStrips to prevent it from being wiped out
+                showStatus(stripId, 'error', `Network error: ${error.message}`);
+            }
+        }
+
+        // Timer
+        function startTimer(stripId, duration) {
+            const strip = state.strips.find(s => s.id === stripId);
+            if (!strip) return;
+
+            // Clear any existing timer for this strip
+            if (activeTimers[stripId]) {
+                clearInterval(activeTimers[stripId]);
+            }
+
+            let remaining = duration;
+            updateStrip(stripId, { timerValue: remaining });
+            renderStrips();
+
+            const timer = setInterval(() => {
+                remaining--;
+                updateStrip(stripId, { timerValue: remaining });
+                renderStrips();
+
+                if (remaining <= 0) {
+                    clearInterval(timer);
+                    delete activeTimers[stripId];
+
+                    const currentStrip = state.strips.find(s => s.id === stripId); // Re-fetch to get latest state
+
+                    if (currentStrip && currentStrip.loopEnabled) {
+                        // Loop is enabled: Schedule next run
+                        let loopRemaining = currentStrip.loopInterval || 5;
+
+                        const updateLoopTimer = () => {
+                            updateStrip(stripId, { timerValue: `Next in ${loopRemaining}s...` });
+                            renderStrips();
+                        };
+                        updateLoopTimer();
+
+                        // Count down wait interval
+                        activeTimers[stripId] = setInterval(() => {
+                            loopRemaining--;
+                            if (loopRemaining <= 0) {
+                                clearInterval(activeTimers[stripId]);
+                                delete activeTimers[stripId];
+                                insertAd(stripId, true); // Force insert for loop
+                            } else {
+                                updateLoopTimer();
+                            }
+                        }, 1000);
+
+                    } else {
+                        // Loop disabled: Reset
+                        updateStrip(stripId, {
+                            locked: false,
+                            timerValue: undefined,
+                            selectedAdType: null,
+                            selectedDuration: null
+                        });
+                        renderStrips();
+                    }
+                }
+            }, 1000);
+
+            // Store timer reference in activeTimers object (not in state)
+            activeTimers[stripId] = timer;
+        }
+
+        // Stop Loop
+        function stopLoop(stripId) {
+            const strip = state.strips.find(s => s.id === stripId);
+            if (!strip) return;
+
+            // Clear any active timer
+            if (activeTimers[stripId]) {
+                clearInterval(activeTimers[stripId]);
+                delete activeTimers[stripId];
+            }
+
+            // Reset state
+            updateStrip(stripId, {
+                locked: false,
+                timerValue: undefined,
+                timerEndTime: undefined,
+                // Keep selection and settings for convenience
+                // selectedAdType: null, 
+                // selectedDuration: null
+            });
+            renderStrips();
+            showStatus(stripId, 'error', 'Loop stopped');
+        }
+
+        // Status Messages
+        function showStatus(stripId, type, message) {
+            const statusEl = document.getElementById(`status-${stripId}`);
+            if (statusEl) {
+                statusEl.className = `status-message show ${type}`;
+                statusEl.textContent = message;
+                setTimeout(() => {
+                    statusEl.className = 'status-message';
+                }, 5000);
+            }
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+
+</html>
