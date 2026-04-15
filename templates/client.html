@@ -87,7 +87,8 @@
         }
 
         input[type="text"],
-        input[type="url"] {
+        input[type="url"],
+        select {
             background: var(--bg-tertiary);
             border: 1px solid var(--border-color);
             color: var(--text-primary);
@@ -98,8 +99,23 @@
             min-width: 250px;
         }
 
+        select {
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f3f4f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            padding-right: 2.5rem;
+        }
+
+        select option {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
         input[type="text"]:focus,
-        input[type="url"]:focus {
+        input[type="url"]:focus,
+        select:focus {
             outline: none;
             border-color: var(--accent-primary);
             box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
@@ -182,6 +198,17 @@
             border-color: rgba(0, 212, 255, 0.3);
         }
 
+        .channel-strip.dragging {
+            opacity: 0.4;
+            transform: scale(0.98);
+        }
+
+        .channel-strip.drag-over {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.4);
+            background: rgba(0, 212, 255, 0.05);
+        }
+
         /* Strip Header */
         .strip-header {
             display: flex;
@@ -198,7 +225,7 @@
         .strip-title {
             font-size: 1rem;
             font-weight: 700;
-            background: transparent;
+            background-color: transparent;
             border: none;
             color: var(--text-primary);
             padding: 0.25rem 0.5rem;
@@ -208,12 +235,12 @@
         }
 
         .strip-title:hover {
-            background: var(--bg-tertiary);
+            background-color: var(--bg-tertiary);
         }
 
         .strip-title:focus {
             outline: none;
-            background: var(--bg-tertiary);
+            background-color: var(--bg-tertiary);
             border: 1px solid var(--accent-primary);
         }
 
@@ -258,7 +285,7 @@
 
         .stream-id-input {
             flex: 1;
-            min-width: 0;
+            min-width: 0 !important;
         }
 
         .stream-id-input:disabled {
@@ -276,26 +303,81 @@
             border-color: var(--accent-primary);
         }
 
-        /* Ad Type Grid */
-        .ad-type-grid {
+        /* Ad Format Stack */
+        .format-stack {
             display: flex;
             flex-direction: column;
             gap: 0.5rem;
         }
 
-        .ad-type-row {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 0.5rem;
+        .format-btn {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
         }
 
-        .ad-type-label {
+        .format-btn:hover:not(:disabled) {
+            background: var(--bg-secondary);
+            border-color: var(--accent-primary);
+            transform: translateY(-1px);
+        }
+
+        .format-btn.selected {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(124, 58, 237, 0.1));
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 8px rgba(0, 212, 255, 0.2);
+        }
+
+        .format-btn.selected svg {
+            color: var(--accent-primary);
+        }
+
+        .format-btn svg {
+            width: 28px;
+            height: 28px;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+
+        .format-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Duration Box */
+        .duration-container {
+            margin-top: 0.25rem;
+            padding: 0.75rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .duration-label {
             font-size: 0.75rem;
             color: var(--text-secondary);
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .duration-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
         }
 
         .ad-btn {
@@ -398,6 +480,28 @@
             font-variant-numeric: tabular-nums;
         }
 
+        /* Progress Bar */
+        .progress-container {
+            width: 100%;
+            height: 6px;
+            background: var(--bg-primary);
+            border-radius: 3px;
+            margin-top: 1rem;
+            overflow: hidden;
+            display: none;
+        }
+
+        .progress-container.active {
+            display: block;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            width: 100%;
+            transition: width 1s linear;
+        }
+
         /* Status Message */
         .status-message {
             padding: 0.75rem;
@@ -481,6 +585,10 @@
             <div class="settings-title">SCTE Ad Insertion Control</div>
             <div class="settings-controls">
                 <div class="input-group">
+                    <input type="checkbox" id="dev-mode-switch" style="width: 1rem; height: 1rem; cursor: pointer;">
+                    <label for="dev-mode-switch" style="cursor: pointer; user-select: none;">Dev</label>
+                </div>
+                <div class="input-group" id="api-url-group" style="display: none;">
                     <label for="api-url">API Server:</label>
                     <input type="url" id="api-url" placeholder="http://localhost:5000">
                 </div>
@@ -500,7 +608,7 @@
 
     <script>
         // Constants
-        const DEFAULT_API_URL = 'http://localhost:5000';
+        const DEFAULT_API_URL = window.location.origin;
         const UPID_MAP = {
             'fullscreen': 'fmt=interstitial',
             'pip': 'fmt=pip',
@@ -514,10 +622,17 @@
             'lbar': 'L-Bar'
         };
 
+        const LOOP_SEQUENCE = [
+            { type: 'fullscreen', duration: 60 },
+            { type: 'pip', duration: 15 },
+            { type: 'lbar', duration: 15 }
+        ];
+
         // State
         let state = {
             apiUrl: DEFAULT_API_URL,
-            strips: []
+            strips: [],
+            presets: []
         };
 
         // Active timers (not persisted, recreated on load)
@@ -526,15 +641,93 @@
         // Initialize
         function init() {
             loadState();
+
+            const apiUrlInput = document.getElementById('api-url');
+            const devModeInput = document.getElementById('dev-mode-switch');
+            const apiUrlGroup = document.getElementById('api-url-group');
+
+            // Force dynamic URL if not in dev mode
+            if (!state.devMode) {
+                state.apiUrl = DEFAULT_API_URL;
+            }
+
             renderStrips();
+            fetchPresets();
 
             // API URL input handler
-            const apiUrlInput = document.getElementById('api-url');
             apiUrlInput.value = state.apiUrl;
             apiUrlInput.addEventListener('change', (e) => {
                 state.apiUrl = e.target.value || DEFAULT_API_URL;
                 saveState();
+                fetchPresets();
             });
+
+            // Dev Mode input handler
+            devModeInput.checked = state.devMode || false;
+            apiUrlGroup.style.display = state.devMode ? 'flex' : 'none';
+
+            devModeInput.addEventListener('change', (e) => {
+                state.devMode = e.target.checked;
+                apiUrlGroup.style.display = state.devMode ? 'flex' : 'none';
+
+                if (!state.devMode) {
+                    state.apiUrl = DEFAULT_API_URL;
+                    apiUrlInput.value = state.apiUrl;
+                }
+                saveState();
+                renderStrips();
+            });
+        }
+
+        async function fetchPresets() {
+            try {
+                const response = await fetch(`${state.apiUrl}/api/presets`);
+                if (response.ok) {
+                    state.presets = await response.json();
+                    renderStrips();
+                }
+            } catch (e) {
+                console.error("Failed to fetch presets:", e);
+            }
+        }
+
+        async function removePreset(title) {
+            if (!confirm(`Permanently delete preset '${title}'?`)) return;
+            try {
+                const response = await fetch(`${state.apiUrl}/api/presets/remove`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: title })
+                });
+                if (response.ok) {
+                    state.presets = await response.json();
+                    renderStrips();
+                }
+            } catch (e) {
+                console.error("Failed to remove preset:", e);
+            }
+        }
+
+        async function saveCustomPreset(id) {
+            const strip = state.strips.find(s => s.id === id);
+            if (!strip || !strip.title || !strip.streamId) {
+                alert("Both Title and Stream ID are strictly required to save a preset.");
+                return;
+            }
+            try {
+                const response = await fetch(`${state.apiUrl}/api/presets/add`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: strip.title, stream_id: strip.streamId, color: strip.color })
+                });
+                if (response.ok) {
+                    state.presets = await response.json();
+                    updateStrip(id, { isCustomizingPreset: false });
+                    renderStrips();
+                }
+            } catch (e) {
+                console.error("Failed to save preset", e);
+            }
         }
 
         // State Management
@@ -616,6 +809,64 @@
             }
         }
 
+        // Drag and Drop Logic
+        let dragSourceId = null;
+
+        function handleDragStart(e) {
+            dragSourceId = parseInt(e.currentTarget.dataset.id);
+            e.currentTarget.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+
+        function handleDragEnter(e) {
+            const target = e.currentTarget;
+            if (target.classList.contains('channel-strip')) {
+                target.classList.add('drag-over');
+            }
+        }
+
+        function handleDragLeave(e) {
+            const target = e.currentTarget;
+            if (target.classList.contains('channel-strip')) {
+                if (!target.contains(e.relatedTarget)) {
+                    target.classList.remove('drag-over');
+                }
+            }
+        }
+
+        function handleDrop(e) {
+            e.stopPropagation();
+            const target = e.currentTarget;
+            target.classList.remove('drag-over');
+
+            const targetId = parseInt(target.dataset.id);
+
+            if (dragSourceId && dragSourceId !== targetId) {
+                const sourceIndex = state.strips.findIndex(s => s.id === dragSourceId);
+                const targetIndex = state.strips.findIndex(s => s.id === targetId);
+
+                if (sourceIndex > -1 && targetIndex > -1) {
+                    const [movedStrip] = state.strips.splice(sourceIndex, 1);
+                    state.strips.splice(targetIndex, 0, movedStrip);
+                    saveState();
+                    renderStrips();
+                }
+            }
+            return false;
+        }
+
+        function handleDragEnd(e) {
+            e.currentTarget.classList.remove('dragging');
+            document.querySelectorAll('.channel-strip').forEach(el => el.classList.remove('drag-over'));
+            dragSourceId = null;
+        }
+
         // Rendering
         function renderStrips() {
             const container = document.getElementById('strips-container');
@@ -637,26 +888,70 @@
         function renderStrip(strip) {
             const isLocked = strip.locked;
             const hasSelection = strip.selectedAdType && strip.selectedDuration;
+            const isLoopActive = strip.loopEnabled && state.devMode;
 
             return `
-                <div class="channel-strip" style="border-left: 4px solid ${strip.color}">
+                <div class="channel-strip" 
+                     data-id="${strip.id}"
+                     draggable="false"
+                     ondragstart="handleDragStart(event)"
+                     ondragover="handleDragOver(event)"
+                     ondragenter="handleDragEnter(event)"
+                     ondragleave="handleDragLeave(event)"
+                     ondrop="handleDrop(event)"
+                     ondragend="handleDragEnd(event); this.setAttribute('draggable', 'false');"
+                     style="border-left: 4px solid ${strip.color};">
                     <!-- Header -->
                     <div class="strip-header">
-                        <div class="strip-title-container">
-                            <input 
-                                type="text" 
-                                class="strip-title" 
-                                value="${strip.title}"
-                                onchange="updateStrip(${strip.id}, { title: this.value })"
-                                ${isLocked ? 'disabled' : ''}
-                            >
-                            <button 
-                                class="btn btn-small btn-danger" 
-                                onclick="removeChannelStrip(${strip.id})"
-                                ${isLocked ? 'disabled' : ''}
-                            >×</button>
+                        <div class="strip-title-container" style="flex: 1; display: flex; align-items: center; gap: 0.5rem; overflow: hidden;">
+                            <div class="drag-handle-icon" 
+                                 onmousedown="if(!${isLocked}) { const s = this.closest('.channel-strip'); s.setAttribute('draggable', 'true'); window.addEventListener('mouseup', () => s.setAttribute('draggable', 'false'), {once: true}); }" 
+                                 style="cursor: ${isLocked ? 'not-allowed' : 'grab'}; color: var(--text-secondary); font-size: 1.25rem; padding-right: 0.25rem; opacity: ${isLocked ? 0.3 : 1}; user-select: none;" 
+                                 title="${isLocked ? 'Locked' : 'Drag to reorder'}">⋮⋮</div>
+                            ${(state.devMode && strip.isCustomizingPreset) ? `
+                                <input 
+                                    type="text" 
+                                    class="strip-title" 
+                                    value="${strip.title}"
+                                    onchange="updateStrip(${strip.id}, { title: this.value })"
+                                    ${isLocked ? 'disabled' : ''}
+                                    style="flex: 1; min-width: 0;"
+                                    placeholder="Preset Title"
+                                >
+                                <button class="btn btn-small" onclick="saveCustomPreset(${strip.id})" ${isLocked ? 'disabled' : ''} title="Save to Server" style="padding: 0 0.5rem;">💾</button>
+                                <button class="btn btn-small" onclick="updateStrip(${strip.id}, { isCustomizingPreset: false }); renderStrips();" ${isLocked ? 'disabled' : ''} title="Cancel" style="padding: 0 0.5rem;">✕</button>
+                            ` : `
+                                <select 
+                                    class="strip-title" 
+                                    onchange="
+                                        if (this.value === '_custom') { 
+                                            updateStrip(${strip.id}, { isCustomizingPreset: true, title: '', streamId: '', color: '#3b82f6' }); 
+                                            renderStrips(); 
+                                        } else { 
+                                            const p = state.presets.find(pr => pr.title === this.value); 
+                                            if (p) { updateStrip(${strip.id}, { title: p.title, streamId: p.stream_id, color: p.color }); renderStrips(); }
+                                        }
+                                    "
+                                    ${isLocked ? 'disabled' : ''}
+                                    style="width: 100%; border: none; background-color: transparent; cursor: pointer;"
+                                >
+                                    ${!strip.title || (state.presets && !state.presets.find(p=>p.title === strip.title)) ? `<option value="${strip.title}" selected ${!strip.title ? 'disabled' : ''}>${strip.title || 'Select Channel'}</option>` : ''}
+                                    ${(state.presets || []).map(p => `
+                                        <option value="${p.title}" ${strip.title === p.title ? 'selected' : ''}>${p.title}</option>
+                                    `).join('')}
+                                    ${state.devMode ? `<option value="_custom">+ New Preset</option>` : ''}
+                                </select>
+                            `}
+                            ${!strip.isCustomizingPreset ? `
+                                <button 
+                                    class="btn btn-small btn-danger" 
+                                    onclick="removeChannelStrip(${strip.id})"
+                                    ${isLocked ? 'disabled' : ''}
+                                    style="flex-shrink: 0;"
+                                >×</button>
+                            ` : ''}
                         </div>
-                        <div class="color-picker-container">
+                        <div class="color-picker-container" style="display: ${(state.devMode && strip.isCustomizingPreset) ? 'flex' : 'none'};">
                             <input 
                                 type="color" 
                                 value="${strip.color}"
@@ -669,40 +964,65 @@
                     <!-- Stream ID -->
                     <div class="stream-id-container">
                         <span class="stream-id-label">Stream ID</span>
-                        <input 
-                            type="text" 
-                            class="stream-id-input" 
-                            value="${strip.streamId}"
-                            onchange="updateStrip(${strip.id}, { streamId: this.value })"
-                            ondblclick="this.readOnly = false; this.select();"
-                            onblur="this.readOnly = true;"
-                            readonly
-                            ${isLocked ? 'disabled' : ''}
-                            placeholder="Double-click to edit"
-                            title="Double-click to edit stream ID"
-                        >
+                        <div style="display: flex; gap: 0.25rem; flex: 1; min-width: 0;">
+                            <input 
+                                type="text" 
+                                class="stream-id-input" 
+                                value="${strip.streamId}"
+                                onchange="updateStrip(${strip.id}, { streamId: this.value })"
+                                ${isLocked ? 'disabled' : ''}
+                                placeholder="Stream Target"
+                                title="Stream Target"
+                                ${(state.devMode && strip.isCustomizingPreset) ? '' : 'readonly'}
+                            >
+                            ${(state.devMode && !strip.isCustomizingPreset && strip.title && state.presets && state.presets.find(p=>p.title === strip.title)) ? `
+                                <button class="btn btn-small btn-danger" onclick="removePreset('${strip.title}')" title="Delete Preset from Server" style="flex-shrink: 0; margin-left: 0.25rem; padding: 0.5rem;">🗑️ preset</button>
+                            ` : ''}
+                        </div>
                     </div>
 
-                    <!-- Ad Type Grid -->
-                    <div class="ad-type-grid">
-                        ${AD_TYPES.map(adType => `
-                            <div>
-                                <div class="ad-type-label">${AD_TYPE_LABELS[adType]}</div>
-                                <div class="ad-type-row">
-                                    ${DURATIONS.map(duration => `
-                                        <button 
-                                            class="ad-btn ${strip.selectedAdType === adType && strip.selectedDuration === duration ? 'selected' : ''}"
-                                            onclick="selectAd(${strip.id}, '${adType}', ${duration})"
-                                            ${isLocked ? 'disabled' : ''}
-                                        >${duration}s</button>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        `).join('')}
+                    <!-- Format Stack -->
+                    <div class="format-stack">
+                        <button class="format-btn ${strip.selectedAdType === 'fullscreen' ? 'selected' : ''}" onclick="selectFormat(${strip.id}, 'fullscreen')" ${isLocked ? 'disabled' : ''}>
+                            <svg viewBox="0 0 24 24" fill="none" class="svg-icon">
+                                <rect x="2" y="4" width="20" height="16" rx="2" fill="currentColor"/>
+                            </svg>
+                            Fullscreen
+                        </button>
+                        <button class="format-btn ${strip.selectedAdType === 'pip' ? 'selected' : ''}" onclick="selectFormat(${strip.id}, 'pip')" ${isLocked ? 'disabled' : ''}>
+                            <svg viewBox="0 0 24 24" fill="none" class="svg-icon">
+                                <rect x="2" y="4" width="20" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+                                <rect x="3" y="8" width="11" height="7" rx="1" fill="currentColor" fill-opacity="0.8" stroke="none"/>
+                                <rect x="15" y="9" width="5" height="4" rx="1" fill="currentColor" fill-opacity="0.8" stroke="none"/>
+                            </svg>
+                            Picture-in-Picture
+                        </button>
+                        <button class="format-btn ${strip.selectedAdType === 'lbar' ? 'selected' : ''}" onclick="selectFormat(${strip.id}, 'lbar')" ${isLocked ? 'disabled' : ''}>
+                            <svg viewBox="0 0 24 24" fill="none" class="svg-icon">
+                                <rect x="2" y="4" width="20" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+                                <path d="M2,6 C2,4.89 2.89,4 4,4 L8,4 L8,15 L22,15 L22,18 C22,19.1 21.1,20 20,20 L4,20 C2.89,20 2,19.1 2,18 Z" fill="currentColor" stroke="none"/>
+                                <rect x="9" y="5" width="12" height="9" fill="currentColor" fill-opacity="0.3" stroke="none"/>
+                            </svg>
+                            L-Bar
+                        </button>
+                    </div>
+
+                    <!-- Duration Details -->
+                    <div class="duration-container" style="display: ${strip.selectedAdType ? 'block' : 'none'};">
+                        <span class="duration-label">Insert Duration</span>
+                        <div class="duration-row">
+                            ${DURATIONS.map(duration => `
+                                <button 
+                                    class="ad-btn ${strip.selectedDuration === duration ? 'selected' : ''}"
+                                    onclick="selectDuration(${strip.id}, ${duration})"
+                                    ${isLocked ? 'disabled' : ''}
+                                >${duration}s</button>
+                            `).join('')}
+                        </div>
                     </div>
 
                     <!-- Loop Settings -->
-                    <div style="display: flex; gap: 1rem; align-items: center; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 0.375rem;">
+                    <div style="display: ${state.devMode ? 'flex' : 'none'}; gap: 1rem; align-items: center; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 0.375rem;">
                         <div style="display: flex; align-items: center; gap: 0.5rem;">
                             <input 
                                 type="checkbox" 
@@ -731,6 +1051,9 @@
                     <div class="timer-display ${strip.timerValue !== undefined ? 'active' : ''}" id="timer-${strip.id}">
                         <div class="timer-label">Time Remaining</div>
                         <div class="timer-value">${strip.timerValue !== undefined ? (typeof strip.timerValue === 'number' ? strip.timerValue + 's' : strip.timerValue) : '0s'}</div>
+                        <div class="progress-container ${typeof strip.timerValue === 'number' && strip.totalDuration ? 'active' : ''}">
+                            <div class="progress-bar" style="width: ${typeof strip.timerValue === 'number' && strip.totalDuration ? Math.max(0, (strip.timerValue / strip.totalDuration) * 100) : 100}%"></div>
+                        </div>
                     </div>
 
                     <!-- Status Message -->
@@ -739,22 +1062,31 @@
                     <!-- Insert Button -->
                     <!-- Insert/Stop Button -->
                     <button 
-                        class="btn insert-btn ${isLocked ? (strip.loopEnabled ? 'btn-danger' : 'loading') : ''}"
-                        onclick="${isLocked && strip.loopEnabled ? `stopLoop(${strip.id})` : `insertAd(${strip.id})`}"
-                        ${!hasSelection || (isLocked && !strip.loopEnabled) ? 'disabled' : ''}
+                        class="btn insert-btn ${isLocked ? (isLoopActive ? 'btn-danger' : 'loading') : ''}"
+                        onclick="${isLocked && isLoopActive ? `stopLoop(${strip.id})` : `insertAd(${strip.id})`}"
+                        ${(!hasSelection && !isLoopActive) || (isLocked && !isLoopActive) ? 'disabled' : ''}
                     >
-                        ${isLocked && strip.loopEnabled ? 'STOP LOOP' : (isLocked ? 'RUNNING' : 'INSERT')}
+                        ${isLocked && isLoopActive ? 'STOP LOOP' : (isLocked ? 'RUNNING' : (isLoopActive ? 'START LOOP' : 'INSERT'))}
                     </button>
                 </div>
             `;
         }
 
-        // Ad Selection
-        function selectAd(stripId, adType, duration) {
+        // Ad Format Selection
+        function selectFormat(stripId, adType) {
+            let defDuration = 15;
+            if (adType === 'fullscreen') defDuration = 60;
+
             updateStrip(stripId, {
                 selectedAdType: adType,
-                selectedDuration: duration
+                selectedDuration: defDuration
             });
+            renderStrips();
+        }
+
+        // Duration Selection
+        function selectDuration(stripId, duration) {
+            updateStrip(stripId, { selectedDuration: duration });
             renderStrips();
         }
 
@@ -770,13 +1102,28 @@
                 return;
             }
 
-            if (!strip.selectedAdType || !strip.selectedDuration) {
+            if (strip.loopEnabled && state.devMode) {
+                if (!force || strip.loopIndex === undefined) {
+                    strip.loopIndex = 0;
+                }
+                const currentStep = LOOP_SEQUENCE[strip.loopIndex % LOOP_SEQUENCE.length];
+                strip.selectedAdType = currentStep.type;
+                strip.selectedDuration = currentStep.duration;
+                updateStrip(stripId, {
+                    selectedAdType: currentStep.type,
+                    selectedDuration: currentStep.duration,
+                    loopIndex: strip.loopIndex,
+                    locked: true
+                });
+            } else if (!strip.selectedAdType || !strip.selectedDuration) {
                 showStatus(stripId, 'error', 'Please select an ad type and duration');
                 return;
+            } else {
+                // Lock controls manually if loop is not enabled
+                updateStrip(stripId, { locked: true });
             }
 
-            // Lock controls
-            updateStrip(stripId, { locked: true });
+            // Re-render to reflect new locked state and possible selection overrides
             renderStrips();
 
             // Prepare request
@@ -797,6 +1144,9 @@
 
                 if (response.ok) {
                     showStatus(stripId, 'success', 'Ad inserted successfully');
+
+                    // Implicit saves are now migrated explicitly onto Admin presets UI.
+
                     startTimer(stripId, strip.selectedDuration);
                 } else {
                     // Handle non-200 responses
@@ -837,7 +1187,7 @@
             }
 
             let remaining = duration;
-            updateStrip(stripId, { timerValue: remaining });
+            updateStrip(stripId, { timerValue: remaining, totalDuration: duration });
             renderStrips();
 
             const timer = setInterval(() => {
@@ -851,7 +1201,11 @@
 
                     const currentStrip = state.strips.find(s => s.id === stripId); // Re-fetch to get latest state
 
-                    if (currentStrip && currentStrip.loopEnabled) {
+                    if (currentStrip && currentStrip.loopEnabled && state.devMode) {
+                        // Advance the loop index for next time
+                        const currentStripRef = state.strips.find(s => s.id === stripId);
+                        updateStrip(stripId, { loopIndex: (currentStripRef.loopIndex || 0) + 1 });
+
                         // Loop is enabled: Schedule next run
                         let loopRemaining = currentStrip.loopInterval || 5;
 
