@@ -68,7 +68,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 app = Flask(__name__)
 FLASK_HOST = os.environ.setdefault("FLASK_HOST", "0.0.0.0")
-FLASK_PORT = 5000
+FLASK_PORT = 80
 FLASK_DEBUG = True
 
 DEFAULT_TIMEOUT = 2
