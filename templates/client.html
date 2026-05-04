@@ -638,6 +638,27 @@
         // Active timers (not persisted, recreated on load)
         let activeTimers = {};
 
+        // Worker for background-proof timers
+        const timerWorkerCode = `
+            let interval;
+            self.onmessage = function(e) {
+                if (e.data === 'start') {
+                    interval = setInterval(() => self.postMessage('tick'), 1000);
+                } else if (e.data === 'stop') {
+                    clearInterval(interval);
+                }
+            };
+        `;
+        const timerWorkerBlob = new Blob([timerWorkerCode], { type: 'application/javascript' });
+        const timerWorkerUrl = URL.createObjectURL(timerWorkerBlob);
+
+        function createBackgroundTimer(tickCallback) {
+            const worker = new Worker(timerWorkerUrl);
+            worker.onmessage = tickCallback;
+            worker.postMessage('start');
+            return worker;
+        }
+
         // Initialize
         function init() {
             loadState();
@@ -715,19 +736,39 @@
                 return;
             }
             try {
+                const payload = { title: strip.title, stream_id: strip.streamId, color: strip.color };
+                if (strip.originalTitle) {
+                    payload.original_title = strip.originalTitle;
+                }
                 const response = await fetch(`${state.apiUrl}/api/presets/add`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title: strip.title, stream_id: strip.streamId, color: strip.color })
+                    body: JSON.stringify(payload)
                 });
                 if (response.ok) {
                     state.presets = await response.json();
-                    updateStrip(id, { isCustomizingPreset: false });
+                    updateStrip(id, { isCustomizingPreset: false, originalTitle: null });
                     renderStrips();
                 }
             } catch (e) {
                 console.error("Failed to save preset", e);
             }
+        }
+
+        function cancelCustomPreset(id) {
+            const strip = state.strips.find(s => s.id === id);
+            if (!strip) return;
+            if (strip.originalTitle) {
+                const p = state.presets.find(pr => pr.title === strip.originalTitle);
+                if (p) {
+                    updateStrip(id, { isCustomizingPreset: false, originalTitle: null, title: p.title, streamId: p.stream_id, color: p.color });
+                } else {
+                    updateStrip(id, { isCustomizingPreset: false, originalTitle: null });
+                }
+            } else {
+                updateStrip(id, { isCustomizingPreset: false });
+            }
+            renderStrips();
         }
 
         // State Management
@@ -792,7 +833,11 @@
 
             // Clear timer if active
             if (activeTimers[id]) {
-                clearInterval(activeTimers[id]);
+                if (activeTimers[id].terminate) {
+                    activeTimers[id].terminate();
+                } else {
+                    clearInterval(activeTimers[id]);
+                }
                 delete activeTimers[id];
             }
 
@@ -919,13 +964,13 @@
                                     placeholder="Preset Title"
                                 >
                                 <button class="btn btn-small" onclick="saveCustomPreset(${strip.id})" ${isLocked ? 'disabled' : ''} title="Save to Server" style="padding: 0 0.5rem;">💾</button>
-                                <button class="btn btn-small" onclick="updateStrip(${strip.id}, { isCustomizingPreset: false }); renderStrips();" ${isLocked ? 'disabled' : ''} title="Cancel" style="padding: 0 0.5rem;">✕</button>
+                                <button class="btn btn-small" onclick="cancelCustomPreset(${strip.id})" ${isLocked ? 'disabled' : ''} title="Cancel" style="padding: 0 0.5rem;">✕</button>
                             ` : `
                                 <select 
                                     class="strip-title" 
                                     onchange="
                                         if (this.value === '_custom') { 
-                                            updateStrip(${strip.id}, { isCustomizingPreset: true, title: '', streamId: '', color: '#3b82f6' }); 
+                                            updateStrip(${strip.id}, { isCustomizingPreset: true, title: '', streamId: '', color: '#3b82f6', originalTitle: null }); 
                                             renderStrips(); 
                                         } else { 
                                             const p = state.presets.find(pr => pr.title === this.value); 
@@ -935,7 +980,7 @@
                                     ${isLocked ? 'disabled' : ''}
                                     style="width: 100%; border: none; background-color: transparent; cursor: pointer;"
                                 >
-                                    ${!strip.title || (state.presets && !state.presets.find(p=>p.title === strip.title)) ? `<option value="${strip.title}" selected ${!strip.title ? 'disabled' : ''}>${strip.title || 'Select Channel'}</option>` : ''}
+                                    ${!strip.title || (state.presets && !state.presets.find(p => p.title === strip.title)) ? `<option value="${strip.title}" selected ${!strip.title ? 'disabled' : ''}>${strip.title || 'Select Channel'}</option>` : ''}
                                     ${(state.presets || []).map(p => `
                                         <option value="${p.title}" ${strip.title === p.title ? 'selected' : ''}>${p.title}</option>
                                     `).join('')}
@@ -975,8 +1020,9 @@
                                 title="Stream Target"
                                 ${(state.devMode && strip.isCustomizingPreset) ? '' : 'readonly'}
                             >
-                            ${(state.devMode && !strip.isCustomizingPreset && strip.title && state.presets && state.presets.find(p=>p.title === strip.title)) ? `
-                                <button class="btn btn-small btn-danger" onclick="removePreset('${strip.title}')" title="Delete Preset from Server" style="flex-shrink: 0; margin-left: 0.25rem; padding: 0.5rem;">🗑️ preset</button>
+                            ${(state.devMode && !strip.isCustomizingPreset && strip.title && state.presets && state.presets.find(p => p.title === strip.title)) ? `
+                                <button class="btn btn-small" onclick="updateStrip(${strip.id}, { isCustomizingPreset: true, originalTitle: '${strip.title.replace(/'/g, "\\'")}' }); renderStrips();" title="Edit Preset" style="flex-shrink: 0; margin-left: 0.25rem; padding: 0.5rem; background: var(--accent-secondary);">✏️ edit</button>
+                                <button class="btn btn-small btn-danger" onclick="removePreset('${strip.title.replace(/'/g, "\\'")}')" title="Delete Preset from Server" style="flex-shrink: 0; margin-left: 0.25rem; padding: 0.5rem;">🗑️ preset</button>
                             ` : ''}
                         </div>
                     </div>
@@ -1057,7 +1103,7 @@
                     </div>
 
                     <!-- Status Message -->
-                    <div class="status-message" id="status-${strip.id}"></div>
+                    <div class="status-message ${strip.statusType ? 'show ' + strip.statusType : ''}" id="status-${strip.id}">${strip.statusMessage || ''}</div>
 
                     <!-- Insert Button -->
                     <!-- Insert/Stop Button -->
@@ -1126,52 +1172,78 @@
             // Re-render to reflect new locked state and possible selection overrides
             renderStrips();
 
-            // Prepare request
-            const payload = {
-                stream_id: strip.streamId,
-                upid: UPID_MAP[strip.selectedAdType],
-                duration: strip.selectedDuration
-            };
+            // Prepare requests
+            const streamIds = strip.streamId.split(',').map(id => id.trim()).filter(id => id);
+
+            if (streamIds.length === 0) {
+                showStatus(stripId, 'error', 'Please enter a valid Stream ID');
+                updateStrip(stripId, { locked: false });
+                renderStrips();
+                return;
+            }
+
+            let successCount = 0;
+            let errors = [];
 
             try {
-                const response = await fetch(`${state.apiUrl}/api/scte`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(payload)
+                const requests = streamIds.map(async (streamId) => {
+                    try {
+                        const payload = {
+                            stream_id: streamId,
+                            upid: UPID_MAP[strip.selectedAdType],
+                            duration: strip.selectedDuration
+                        };
+
+                        const response = await fetch(`${state.apiUrl}/api/scte`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (response.ok) {
+                            successCount++;
+                        } else {
+                            let errorMsg = response.statusText;
+                            try {
+                                const errorData = await response.json();
+                                errorMsg = errorData.error || errorData.message || JSON.stringify(errorData);
+                            } catch (e) {
+                                try {
+                                    errorMsg = await response.text() || response.statusText;
+                                } catch (textError) {
+                                    // ignore
+                                }
+                            }
+                            errors.push(`${streamId}: ${errorMsg}`);
+                        }
+                    } catch (netErr) {
+                        errors.push(`${streamId}: Network error - ${netErr.message}`);
+                    }
                 });
 
-                if (response.ok) {
-                    showStatus(stripId, 'success', 'Ad inserted successfully');
+                await Promise.all(requests);
+
+                if (successCount > 0) {
+                    if (errors.length > 0) {
+                        showStatus(stripId, 'error', `Partial Success (${successCount}/${streamIds.length}). Failed: ${errors.join(' | ')}`);
+                    } else {
+                        const statusMessage = streamIds.length > 1 ? `Ad inserted successfully (${successCount}/${streamIds.length})` : 'Ad inserted successfully';
+                        showStatus(stripId, 'success', statusMessage);
+                    }
 
                     // Implicit saves are now migrated explicitly onto Admin presets UI.
 
                     startTimer(stripId, strip.selectedDuration);
                 } else {
-                    // Handle non-200 responses
-                    let errorMessage = `Error ${response.status}: `;
-                    try {
-                        const errorData = await response.json();
-                        errorMessage += errorData.error || errorData.message || JSON.stringify(errorData);
-                    } catch (e) {
-                        // If response is not JSON, try to get text
-                        try {
-                            const errorText = await response.text();
-                            errorMessage += errorText || response.statusText || 'Failed to insert ad';
-                        } catch (textError) {
-                            errorMessage += response.statusText || 'Failed to insert ad';
-                        }
-                    }
                     updateStrip(stripId, { locked: false });
                     renderStrips();
-                    // Show status AFTER renderStrips to prevent it from being wiped out
-                    showStatus(stripId, 'error', errorMessage);
+                    showStatus(stripId, 'error', `Failed: ${errors.join(' | ')}`);
                 }
             } catch (error) {
                 updateStrip(stripId, { locked: false });
                 renderStrips();
-                // Show status AFTER renderStrips to prevent it from being wiped out
                 showStatus(stripId, 'error', `Network error: ${error.message}`);
             }
         }
@@ -1183,20 +1255,29 @@
 
             // Clear any existing timer for this strip
             if (activeTimers[stripId]) {
-                clearInterval(activeTimers[stripId]);
+                if (activeTimers[stripId].terminate) {
+                    activeTimers[stripId].terminate();
+                } else {
+                    clearInterval(activeTimers[stripId]);
+                }
+                delete activeTimers[stripId];
             }
 
             let remaining = duration;
             updateStrip(stripId, { timerValue: remaining, totalDuration: duration });
             renderStrips();
 
-            const timer = setInterval(() => {
+            const timer = createBackgroundTimer(() => {
                 remaining--;
                 updateStrip(stripId, { timerValue: remaining });
                 renderStrips();
 
                 if (remaining <= 0) {
-                    clearInterval(timer);
+                    if (activeTimers[stripId] && activeTimers[stripId].terminate) {
+                        activeTimers[stripId].terminate();
+                    } else if (activeTimers[stripId]) {
+                        clearInterval(activeTimers[stripId]);
+                    }
                     delete activeTimers[stripId];
 
                     const currentStrip = state.strips.find(s => s.id === stripId); // Re-fetch to get latest state
@@ -1216,16 +1297,20 @@
                         updateLoopTimer();
 
                         // Count down wait interval
-                        activeTimers[stripId] = setInterval(() => {
+                        activeTimers[stripId] = createBackgroundTimer(() => {
                             loopRemaining--;
                             if (loopRemaining <= 0) {
-                                clearInterval(activeTimers[stripId]);
+                                if (activeTimers[stripId] && activeTimers[stripId].terminate) {
+                                    activeTimers[stripId].terminate();
+                                } else if (activeTimers[stripId]) {
+                                    clearInterval(activeTimers[stripId]);
+                                }
                                 delete activeTimers[stripId];
                                 insertAd(stripId, true); // Force insert for loop
                             } else {
                                 updateLoopTimer();
                             }
-                        }, 1000);
+                        });
 
                     } else {
                         // Loop disabled: Reset
@@ -1238,7 +1323,7 @@
                         renderStrips();
                     }
                 }
-            }, 1000);
+            });
 
             // Store timer reference in activeTimers object (not in state)
             activeTimers[stripId] = timer;
@@ -1251,7 +1336,11 @@
 
             // Clear any active timer
             if (activeTimers[stripId]) {
-                clearInterval(activeTimers[stripId]);
+                if (activeTimers[stripId].terminate) {
+                    activeTimers[stripId].terminate();
+                } else {
+                    clearInterval(activeTimers[stripId]);
+                }
                 delete activeTimers[stripId];
             }
 
@@ -1270,14 +1359,16 @@
 
         // Status Messages
         function showStatus(stripId, type, message) {
-            const statusEl = document.getElementById(`status-${stripId}`);
-            if (statusEl) {
-                statusEl.className = `status-message show ${type}`;
-                statusEl.textContent = message;
-                setTimeout(() => {
-                    statusEl.className = 'status-message';
-                }, 5000);
-            }
+            updateStrip(stripId, { statusType: type, statusMessage: message });
+            renderStrips();
+            
+            setTimeout(() => {
+                const strip = state.strips.find(s => s.id === stripId);
+                if (strip && strip.statusMessage === message) {
+                    updateStrip(stripId, { statusType: null, statusMessage: null });
+                    renderStrips();
+                }
+            }, 5000);
         }
 
         // Initialize on load

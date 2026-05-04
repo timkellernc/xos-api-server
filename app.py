@@ -185,16 +185,28 @@ def api_presets_add():
     title = payload.get("title")
     stream_id = payload.get("stream_id")
     color = payload.get("color")
+    original_title = payload.get("original_title")
+
     if not title or not stream_id:
         return jsonify({"error": "missing_or_invalid", "field": "title_or_stream_id"}), 400
     
-    for p in presets:
-        if p.get("title") == title:
-            p["stream_id"] = stream_id
-            if color:
-                p["color"] = color
-            save_presets()
-            return jsonify(presets)
+    if original_title:
+        for p in presets:
+            if p.get("title") == original_title:
+                p["title"] = title
+                p["stream_id"] = stream_id
+                if color:
+                    p["color"] = color
+                save_presets()
+                return jsonify(presets)
+    else:
+        for p in presets:
+            if p.get("title") == title:
+                p["stream_id"] = stream_id
+                if color:
+                    p["color"] = color
+                save_presets()
+                return jsonify(presets)
             
     presets.append({"title": title, "stream_id": stream_id, "color": color or "#3b82f6"})
     save_presets()
