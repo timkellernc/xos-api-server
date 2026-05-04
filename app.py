@@ -233,12 +233,15 @@ def api_upids():
 
 @app.route("/", methods=['GET'])
 def index():
-    return render_template('index.html')
+    return render_template('client.html')
 
 @app.route("/client", methods=['GET'])
 def client():
     return render_template('client.html')
 
+@app.route("/docs", methods=['GET'])
+def docs():
+    return render_template('index.html')
 
 @app.route("/api/scte", methods=['POST'])
 def api_scte():
